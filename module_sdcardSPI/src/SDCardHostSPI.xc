@@ -263,19 +263,12 @@ int xmit_datablock (BYTE drv,  /* 1:OK, 0:Failed */
 /*-----------------------------------------------------------------------*/
 
 static
-BYTE send_cmd (BYTE drv,    /* Returns command response (bit7==1:Send failed)*/
+BYTE send_cmd_internal (BYTE drv,    /* Returns command response (bit7==1:Send failed)*/
   BYTE cmd,    /* Command byte */
   DWORD arg    /* Argument */
 )
 {
   BYTE n, d[1], buf[6];
-
-  if (cmd & 0x80)
-  {  /* ACMD<n> is the command sequense of CMD55-CMD<n> */
-    cmd &= 0x7F;
-    n = send_cmd(drv, CMD55, 0);
-    if (n > 1) return n;
-  }
 
   /* Select the card and wait for ready */
   deselect(drv);
@@ -300,6 +293,21 @@ BYTE send_cmd (BYTE drv,    /* Returns command response (bit7==1:Send failed)*/
     rcvr_mmc(drv, d, 1);
   while ((d[0] & 0x80) && --n);
   return d[0];      /* Return with the response value */
+}
+
+static
+BYTE send_cmd (BYTE drv,    /* Returns command response (bit7==1:Send failed)*/
+  BYTE cmd,    /* Command byte */
+  DWORD arg    /* Argument */
+)
+{
+  if (cmd & 0x80)
+  {  /* ACMD<n> is the command sequense of CMD55-CMD<n> */
+    cmd &= 0x7F;
+    BYTE n = send_cmd_internal(drv, CMD55, 0);
+    if (n > 1) return n;
+  }
+  return send_cmd_internal(drv, cmd, arg);
 }
 
 /*--------------------------------------------------------------------------
